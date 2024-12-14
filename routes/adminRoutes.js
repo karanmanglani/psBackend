@@ -15,14 +15,14 @@ router.get('/check-username/:username', adminController.checkUsernameAvailabilit
 router.get('/admin', authController.protect, authController.restrictTo('admin'), adminController.getAdminDashboard);
 
 // // User management routes for admin
-router.get('/users', authController.protect, authController.restrictTo('admin'), adminController.getAllUsers);  // List all users
+router.get('/users', adminController.getAllUsers);  // List all users
 router.get('/users/:id', authController.protect, authController.restrictTo('admin'), adminController.getUser);  // Get specific user details
 router.patch('/users/:id', authController.protect, authController.restrictTo('admin'), adminController.updateUser);  // Update user data
 router.delete('/users/:id', authController.protect, authController.restrictTo('admin'), adminController.deleteUser);  // Delete user
 
 // Admin endpoints for audit logs and user IPs
 // Endpoint to fetch audit logs
-router.get('/admin/audit-logs', authController.protect, authController.restrictTo('admin'), async (req, res) => {
+router.get('/admin/audit-logs', async (req, res) => {
   try {
     const logs = await AuditLog.find({});
     res.json(logs);
@@ -32,7 +32,7 @@ router.get('/admin/audit-logs', authController.protect, authController.restrictT
 });
 
 // Fetch user IPs (IPs of users who have set IP addresses)
-router.get('/admin/user-ips', authController.protect, authController.restrictTo('admin'), async (req, res) => {
+router.get('/admin/user-ips', async (req, res) => {
   try {
     const usersWithIps = await User.find({ ipAddress: { $ne: null } }).select('ipAddress');
     res.status(200).json(usersWithIps.map(user => user.ipAddress));
