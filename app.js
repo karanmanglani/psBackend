@@ -16,7 +16,7 @@ const userRouter = require('./routes/userRoutes');
 const adminRouter = require('./routes/adminRoutes');
 const catchAsync = require('./utils/catchAsync');
 const User = require('./models/userModel');
-const AuditLog = require('./models/auditLogModel');
+const AuditLog = require('./models/auditLog');
 const authController = require('./controllers/authController');
 
 
