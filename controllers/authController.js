@@ -14,16 +14,25 @@ const signToken = (id, role) => {
   });
 };
 
-// Function to send the token and user data in the response (for React Native)
+// Function to create and send the JWT cookie to the user
 const createSendToken = (user, statusCode, req, res) => {
   const token = signToken(user._id, user.role);
   const expiresIn = process.env.JWT_EXPIRES_IN;
   const days = parseInt(expiresIn, 10);
 
+  // Set the JWT cookie with the token
+  res.cookie('jwt', token, {
+    expires: new Date(Date.now() + days * 24 * 60 * 60 * 1000),  // Adjust expiration date
+    httpOnly: true,  // Ensures the cookie is not accessible via JS
+    secure: false    // Ensure it's secure for HTTPS if you enable HTTPS
+  });
+
+  // Remove password from the user object before sending it
+  user.password = undefined;
+
   // Send the response with status and token data (success response)
   res.status(statusCode).json({
     status: 'success',
-    token,
     data: { user }
   });
 };
