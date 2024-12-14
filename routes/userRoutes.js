@@ -13,6 +13,7 @@ router.get('/logout', authController.logout);   // Handle logout via GET (return
 router.use(authController.protect);
 
 // User-specific routes (returns JSON)
+router.get('/me', userController.getMe, userController.getUser);
 router.delete('/deleteMe', userController.deleteMe); // Soft delete user (deactivate account) (returns JSON)
 
 // Route to check username availability (returns JSON)
