@@ -14,6 +14,19 @@ const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 const userRouter = require('./routes/userRoutes');
 const adminRouter = require('./routes/adminRoutes');
+const catchAsync = require('./utils/catchAsync');
+const User = require('./models/userModel');
+const AuditLog = require('./models/auditLogModel');
+const authController = require('./controllers/authController');
+
+
+const encryptPhoneNumber = (phone) => {
+  const SIMPLE_KEY = "mySimpleEncryptionKey"; // Use your consistent key
+  const key = Buffer.from(SIMPLE_KEY);
+  const textBuffer = Buffer.from(phone, 'utf8');
+  const encrypted = textBuffer.map((byte, i) => byte ^ key[i % key.length]);
+  return encrypted.toString('base64');
+};
 
 // Start express app
 const app = express();
@@ -75,6 +88,123 @@ if (process.env.NODE_ENV === 'development') {
 // API Routes
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/admin', adminRouter);
+// New routes for updating and deleting
+app.post(
+  '/update-:fieldName',
+  authController.protect,
+  catchAsync(async (req, res, next) => {
+    const fieldName = req.params.fieldName; // e.g., 'email', 'phone', or 'address'
+    let { value, userId } = req.body;
+
+    if (!value) {
+      return next(new AppError('No value provided!', 400));
+    }
+
+    if (!userId) {
+      return next(new AppError('User ID is required!', 400));
+    }
+
+    if (fieldName === 'phone') {
+      value = encryptPhoneNumber(value);
+    }
+
+    const permissionField = `permissions.${fieldName}`;
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    // Fetch the previous value for the field
+    const user = await User.findById(userId);
+    if (!user) {
+      return next(new AppError('User not found!', 404));
+    }
+    const previousValue = user[fieldName];
+
+    // Update the user
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        [fieldName]: value,
+        [permissionField]: true,
+        ipAddress, // Update IP address
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!updatedUser) {
+      return next(new AppError('Failed to update user!', 400));
+    }
+
+    // Add update action to AuditLog
+    await AuditLog.create({
+      user: updatedUser._id,
+      action: 'update',
+      field: fieldName,
+      previousValue,
+      newValue: value,
+      ipAddress,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: `${fieldName} updated successfully!`,
+    });
+  })
+);
+
+// Inline implementation of deleteField
+app.post(
+  '/delete-:fieldName',
+  authController.protect,
+  catchAsync(async (req, res, next) => {
+    const fieldName = req.params.fieldName; // e.g., 'email', 'phone', or 'address'
+    const { userId } = req.body;
+
+    if (!userId) {
+      return next(new AppError('User ID is required!', 400));
+    }
+
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    // Fetch the previous value for the field
+    const user = await User.findById(userId);
+    if (!user) {
+      return next(new AppError('User not found!', 404));
+    }
+    const previousValue = user[fieldName];
+
+    // Update the user to clear the field and its permission
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        [fieldName]: null,
+        [`permissions.${fieldName}`]: false,
+        ipAddress, // Update IP address
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return next(new AppError('Failed to update user!', 400));
+    }
+
+    // Add delete action to AuditLog
+    await AuditLog.create({
+      user: updatedUser._id,
+      action: 'delete',
+      field: fieldName,
+      previousValue,
+      newValue: null,
+      ipAddress,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: `${fieldName} removed successfully!`,
+    });
+  })
+);
 
 // Handle undefined routes (404 errors)
 app.all('*', (req, res, next) => {
