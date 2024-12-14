@@ -22,11 +22,8 @@ app.enable('trust proxy'); // For handling proxy in production (e.g., Heroku)
 
 // 1) GLOBAL MIDDLEWARES
 // Implement CORS (Cross-Origin Resource Sharing)
-app.use(cors({
-  origin: ['https://yourfrontenddomain.com'], // Restrict to your frontend domain
-  methods: 'GET,POST,PUT,DELETE',
-  credentials: true,
-}));
+app.use(cors());
+
 
 // Serving static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
