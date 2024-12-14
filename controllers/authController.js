@@ -16,11 +16,11 @@ const signToken = (id, role) => {
 
 // Function to create and send the JWT cookie to the user
 const createSendToken = (user, statusCode, req, res) => {
-  const token = signToken(user._id, user.role);
+  const token = signToken(user._id, user.role);  // Generate the token
   const expiresIn = process.env.JWT_EXPIRES_IN;
   const days = parseInt(expiresIn, 10);
 
-  // Set the JWT cookie with the token
+  // Set the JWT cookie with the token (optional if you still need it)
   res.cookie('jwt', token, {
     expires: new Date(Date.now() + days * 24 * 60 * 60 * 1000),  // Adjust expiration date
     httpOnly: true,  // Ensures the cookie is not accessible via JS
@@ -33,7 +33,10 @@ const createSendToken = (user, statusCode, req, res) => {
   // Send the response with status and token data (success response)
   res.status(statusCode).json({
     status: 'success',
-    data: { user }
+    data: {
+      jwt: token,  // Send the JWT token in the response body
+      user: user   // Send the user data in the response body
+    }
   });
 };
 
